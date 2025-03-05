@@ -17,7 +17,7 @@ const computeUrl = (url, backendUrl) => {
 const config = {
   baseUrl: process.env.REACT_APP_BASE_URL,
   restApiUrl: computeUrl('/api', backendUrl),
-  supportEmailAddress: 'support@studioflow.io',
+  supportEmailAddress: 'support@automatisch.io',
 };
 
 export default config;
