@@ -32,7 +32,7 @@
     "@jest/globals": "^29.7.0",
     "@repo/eslint-config": "workspace:*",
     "@repo/jest-presets": "workspace:*",
-    "@repo/typescript-config": "workspace:*",
+    "@repo/config-typescipt": "workspace:*",
     "@types/body-parser": "^1.19.5",
     "@types/bull-board": "^2.0.4",
     "@types/cors": "^2.8.17",
