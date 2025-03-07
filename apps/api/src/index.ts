@@ -1,8 +1,8 @@
-import { log } from "@repo/logger";
+import { log } from '@repo/logger'
 import { json, urlencoded } from "body-parser";
 import express, { type Express } from "express";
 import morgan from "morgan";
-import cors from "cors";
+import cors from 'cors'
 import { mainRouter } from "./router";
 
 const port = process.env.PORT || 5001;
