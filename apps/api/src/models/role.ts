@@ -178,3 +178,5 @@ class Role extends Base {
         await this.assertRoleIsNotUsed();
     }
 }
+
+export default Role;
