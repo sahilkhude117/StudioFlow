@@ -4,7 +4,11 @@ import { fileURLToPath } from 'url';
 import appInfoConverter from '../helpers/app-info-converter.js';
 import getApp from '../helpers/get-app.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const __filename = require.main ? require.main.filename : module.filename;
+const simulatedImportMetaUrl = `file://${__filename}`;
+
+// Convert the simulated URL to a directory path
+const __dirname = path.dirname(fileURLToPath(simulatedImportMetaUrl));
 
 class App {
   static folderPath = join(__dirname, '../apps');
