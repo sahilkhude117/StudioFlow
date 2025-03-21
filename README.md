@@ -1,6 +1,6 @@
-StudioFlow - No Code Automation
+## StudioFlow - No Code Automation
 
-## Getting Started
+Getting Started
 
 First, run the development server:
 
