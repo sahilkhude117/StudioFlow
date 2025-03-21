@@ -17,7 +17,6 @@
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@studioflow/shared/*": ["packages/shared/src/*"],
       "@studioFlow/ee-auth": ["packages/ee/auth/src/index.ts"],
       "@studioFlow/ee-shared": ["packages/ee/shared/src/index.ts"],
       "@studioFlow/ee/billing/ui": ["packages/ee/billing/ui/src/index.ts"],
