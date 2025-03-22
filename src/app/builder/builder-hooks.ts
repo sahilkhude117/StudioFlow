@@ -1,14 +1,27 @@
 'use client'
 import { AskAiButtonOperations } from "@/features/pieces/lib/types";
-import { FlowOperationRequest, FlowRun, flowStructureUtil, FlowVersion, FlowVersionState, PopulatedFlow } from "../../../shared/src";
+import { FlowOperationRequest, FlowRun, flowStructureUtil, FlowVersion, FlowVersionState, PopulatedFlow, TriggerType } from "../../../shared/src";
 import { flowRunUtils } from "@/features/flow-runs/lib/flow-run-utils";
 import { PromiseQueue } from "@/lib/promise-queue";
-import { createContext } from "react";
+import { createContext, useCallback, useContext } from "react";
 import { create, useStore } from 'zustand';
+import { useMutation } from "@tanstack/react-query";
+import { flowsApi } from "@/features/flows/lib/flows-api";
+import { INTERNAL_ERROR_TOAST, toast } from "@/components/ui/use-toast";
 
 const flowUpdatesQueue = new PromiseQueue();
 
 export const BuilderStateContext = createContext<BuilderStore | null>(null);
+
+export function useBuilderStateContext<T>(
+    selector: (state: BuilderState) => T,
+): T {
+    const store = useContext(BuilderStateContext);
+    if (!store) 
+        throw new Error("Missing BuilderStateContext.Provider in the tree");
+    return useStore(store, useCallback(selector, []));
+}
+
 
 export enum LeftSideBarType {
     RUNS = 'runs',
@@ -135,31 +148,118 @@ export const createBuilderStore = (
                 failedStepInRun,
                 initialState.flowVersion,
               );
-
+        
         return {
-            flow: initialState.flow,
-            flowVersion: initialState.flowVersion,
-            readonly: initialState.readonly,
+            loopsIndexes:
+                initialState.run && initialState.run.steps
+                ? flowRunUtils.findLoopsState(
+                    initialState.flowVersion,
+                    initialState.run,
+                    {},
+                    )
+                : {},
             sampleData: initialState.sampleData,
             sampleDataInput: initialState.sampleDataInput,
-            canExitRun: initialState.canExitRun,
+            flow: initialState.flow,
+            flowVersion: initialState.flowVersion,
+            leftSidebar: initialState.run
+                ? LeftSideBarType.RUN_DETAILS
+                : LeftSideBarType.NONE,
+            readonly: initialState.readonly,
             run: initialState.run,
-            leftSidebar: LeftSideBarType.NONE,
-            rightSidebar: RightSideBarType.NONE,
-            selectedStep: initiallySelectedStep,
             saving: false,
-            selectedBranchIndex: null,
-            refreshStepFormatSettingsToggle: false,
-            activeDraggingStep: null,
-            selectedNodes: [],
-            panningMode: 'grab',
-            pieceSelectorStep: null,
-            isFocusInsideListMapperModeInput: false,
-            refreshSettings: () => set((state) => ({ ...state })),
-            setSelectedBranchIndex: (index) => set(() => ({ selectedBranchIndex: index })),
-            setLeftSidebar: (leftSidebar) => set(() => ({ leftSidebar })),
-            setRightSidebar: (rightSidebar) => set(() => ({ rightSidebar })),
-            setPanningMode: (mode) => set(() => ({ panningMode: mode })),
-            setSelectedNodes: (nodes) => set(() => ({ selectedNodes: nodes })),
-        };
+            selectedStep: initiallySelectedStep,
+            canExitRun: initialState.canExitRun,
+            rightSidebar:
+                initiallySelectedStep && 
+                (initiallySelectedStep !== 'trigger' ||
+                    initialState.flowVersion.trigger.type !== TriggerType.EMPTY)
+                    ? RightSideBarType.PIECE_SETTINGS
+                    : RightSideBarType.NONE,
+            refreshStepFormSettingsToggle: false,
+
+            setRun: async (run: FlowRun, flowVersion: FlowVersion) => 
+                set((state) => {
+                    const newSelectedStep = run.steps
+                        ? flowRunUtils.findFailedStepInOutput(run.steps) ??
+                        state.selectedStep ??
+                        'trigger'
+                        : 'trigger';
+
+                    // Prevent redundant updates
+                    if (
+                        state.run === run &&
+                        state.flowVersion === flowVersion &&
+                        state.selectedStep === newSelectedStep
+                    ) {
+                        return state;
+                    }
+                                
+                    return {
+                        loopsIndexes: flowRunUtils.findLoopsState(
+                            flowVersion,
+                            run,
+                            state.loopsIndexes,
+                        ),
+                        run,
+                        flowVersion, 
+                        leftSidebar: LeftSideBarType.RUN_DETAILS,
+                        rightSidebar: RightSideBarType.PIECE_SETTINGS,
+                        selectedStep: newSelectedStep,
+                        readonly: true,
+                    };
+                }),
+            setFlow: (flow: PopulatedFlow) => set({ flow, selectedStep: null }),
+            exitRun: (userHasPermissionToEditFlow: boolean) =>
+                set({
+                  run: null,
+                  readonly: !userHasPermissionToEditFlow,
+                  loopsIndexes: {},
+                  leftSidebar: LeftSideBarType.NONE,
+                  rightSidebar: RightSideBarType.NONE,
+                  selectedBranchIndex: null,
+                }),
+            setVersion: (flowVersion: FlowVersion) => {
+                set((state) => ({
+                    flowVersion,
+                    run: null,
+                    selectedStep: null,
+                    readonly:
+                    state.flow.publishedVersionId !== flowVersion.id &&
+                    flowVersion.state === FlowVersionState.LOCKED,
+                    leftSidebar: LeftSideBarType.NONE,
+                    rightSidebar: RightSideBarType.NONE,
+                    selectedBranchIndex: null,
+                }));
+                },
+        }
     })
+
+export const useSwitchToDraft = () => {
+    const flowVersion = useBuilderStateContext((state) => state.flowVersion);
+    const setVersion = useBuilderStateContext((state) => state.setVersion);
+    const exitRun = useBuilderStateContext((state) => state.exitRun);
+    const setFlow = useBuilderStateContext((state) => state.setFlow);
+
+    const checkAccess = true;
+    const userHasPermissionToEditFlow = true; 
+    const { mutate: switchToDraft, isPending: isSwitchingToDraftPending } =
+        useMutation({
+            mutationFn: async () => {
+                const flow = await flowsApi.get(flowVersion.flowId)
+                return flow;
+            },
+            onSuccess: (flow) => {
+                setFlow(flow);
+                setVersion(flow.version);
+                exitRun(userHasPermissionToEditFlow)
+            },
+            onError: () => {
+                toast(INTERNAL_ERROR_TOAST);
+            },
+        });
+    return {
+        switchToDraft,
+        isSwitchingToDraftPending,
+    };
+};
