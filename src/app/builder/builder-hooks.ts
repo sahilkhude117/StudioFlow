@@ -1,5 +1,14 @@
+'use client'
 import { AskAiButtonOperations } from "@/features/pieces/lib/types";
-import { FlowOperationRequest, FlowRun, FlowVersion, PopulatedFlow } from "../../../shared/src";
+import { FlowOperationRequest, FlowRun, flowStructureUtil, FlowVersion, FlowVersionState, PopulatedFlow } from "../../../shared/src";
+import { flowRunUtils } from "@/features/flow-runs/lib/flow-run-utils";
+import { PromiseQueue } from "@/lib/promise-queue";
+import { createContext } from "react";
+import { create, useStore } from 'zustand';
+
+const flowUpdatesQueue = new PromiseQueue();
+
+export const BuilderStateContext = createContext<BuilderStore | null>(null);
 
 export enum LeftSideBarType {
     RUNS = 'runs',
@@ -93,3 +102,64 @@ export type BuilderInitialState = Pick<
     | 'sampleData'
     | 'sampleDataInput'
 >;
+
+export type BuilderStore = ReturnType<typeof createBuilderStore>;
+
+function determineInitiallySelectedStep(
+    failedStepInRun: string | null,
+    flowVersion: FlowVersion,
+): string | null {
+    if (failedStepInRun) {
+        return failedStepInRun;
+    }
+    if (flowVersion.state === FlowVersionState.LOCKED) {
+        return null;
+    }
+    return (
+        flowStructureUtil.getAllSteps(flowVersion.trigger).find((s) => !s.valid)
+            ?.name ?? 'trigger'
+    );
+}
+
+export const createBuilderStore = (
+    initialState: BuilderInitialState,
+    newFlow: boolean,
+) => //@ts-ignore
+    create<BuilderState>((set) => {
+        const failedStepInRun = initialState.run?.steps
+            ? flowRunUtils.findFailedStepInOutput(initialState.run.steps)
+            : null;
+        const initiallySelectedStep = newFlow
+            ? null
+            : determineInitiallySelectedStep(
+                failedStepInRun,
+                initialState.flowVersion,
+              );
+
+        return {
+            flow: initialState.flow,
+            flowVersion: initialState.flowVersion,
+            readonly: initialState.readonly,
+            sampleData: initialState.sampleData,
+            sampleDataInput: initialState.sampleDataInput,
+            canExitRun: initialState.canExitRun,
+            run: initialState.run,
+            leftSidebar: LeftSideBarType.NONE,
+            rightSidebar: RightSideBarType.NONE,
+            selectedStep: initiallySelectedStep,
+            saving: false,
+            selectedBranchIndex: null,
+            refreshStepFormatSettingsToggle: false,
+            activeDraggingStep: null,
+            selectedNodes: [],
+            panningMode: 'grab',
+            pieceSelectorStep: null,
+            isFocusInsideListMapperModeInput: false,
+            refreshSettings: () => set((state) => ({ ...state })),
+            setSelectedBranchIndex: (index) => set(() => ({ selectedBranchIndex: index })),
+            setLeftSidebar: (leftSidebar) => set(() => ({ leftSidebar })),
+            setRightSidebar: (rightSidebar) => set(() => ({ rightSidebar })),
+            setPanningMode: (mode) => set(() => ({ panningMode: mode })),
+            setSelectedNodes: (nodes) => set(() => ({ selectedNodes: nodes })),
+        };
+    })
