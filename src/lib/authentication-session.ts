@@ -6,6 +6,7 @@ import { AuthenticationResponse, isNil, Principal } from '../../shared/src/index
 import { authenticationApi } from './authentication-api';
 
 const tokenKey = 'token';
+
 export const authenticationSession = {
   saveResponse(response: AuthenticationResponse) {
     localStorage.setItem(tokenKey, response.token);
