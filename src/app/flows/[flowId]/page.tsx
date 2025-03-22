@@ -6,6 +6,8 @@ import { PopulatedFlow } from "../../../../shared/src";
 import { flowsApi } from "@/features/flows/lib/flows-api";
 import { sampleDataHooks } from "@/features/flows/lib/sample-data-hooks";
 import { LoadingSpinner } from "@/components/ui/spinner";
+import { BuilderStateProvider } from '@/app/builder/builder-state-provider';
+import { BuilderPage } from '@/app/builder';
 
 export default function FlowBuilderPage() {
     const { flowId } = useParams();
@@ -44,7 +46,17 @@ export default function FlowBuilderPage() {
     
     return (
         <ReactFlowProvider>
-            xf
+            <BuilderStateProvider
+                flow={flow!}
+                canExitRun={true}
+                flowVersion={flow!.version}
+                readonly={false}
+                run={null}
+                sampleData={sampleData ?? {}}
+                sampleDataInput={sampleDataInput ?? {}}
+            >
+                <BuilderPage/>
+            </BuilderStateProvider>
         </ReactFlowProvider>
     )
 }
