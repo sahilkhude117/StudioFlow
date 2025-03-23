@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import { flowPieceUtil } from "../../../../shared/src";
+import { Action, ActionType, flowPieceUtil, Step, Trigger, TriggerType } from "../../../../shared/src";
 import { PieceMetadataModel } from "../../../../pieces/community/framework/src";
 import { piecesApi } from "./pieces-api";
+import { StepMetadata } from "./types";
 
 type UsePieceAndMostRecentPatchProps = {
     name: string;
@@ -12,6 +13,11 @@ type UsePieceAndMostRecentPatchProps = {
 type UsePieceProps = {
     name: string;
     version?: string;
+    enabled?: boolean;
+};
+
+type UseStepMetadata = {
+    step: Action | Trigger;
     enabled?: boolean;
 };
 
@@ -63,5 +69,30 @@ export const piecesHooks = {
                 latestPatchQuery.refetch();
             },
         }
-    }
+    },
+    useStepMetadata: ({ step, enabled = true }: UseStepMetadata ) => {
+        const query = useQuery<StepMetadata, Error>({
+            ...stepMetadataQueryBuilder(step),
+            enabled,
+        });
+        return {
+            stepMetadata: query.data,
+            isLoading: query.isLoading,
+        };
+    },
+}
+
+function stepMetadataQueryBuilder(step: Step) {
+    const isPieceStep =
+        step.type === ActionType.PIECE || step.type === TriggerType.PIECE;
+    const pieceName = isPieceStep ? step.settings.pieceName : undefined;
+    const pieceVersion = isPieceStep ? step.settings.pieceVersion : undefined;
+    const customLogoUrl = 
+        'customLogoUrl' in step ? step.customLogoUrl : undefined;
+
+    return {
+        queryKey: ['piece', step.type, pieceName, pieceVersion, customLogoUrl],
+        queryFn: () => piecesApi.getMetadata(step),
+        staleTime: Infinity,
+    };
 }
