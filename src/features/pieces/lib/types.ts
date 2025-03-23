@@ -1,4 +1,21 @@
-import { FlowOperationType, StepLocationRelativeToParent } from "../../../../shared/src";
+import { PieceAuthProperty } from "../../../../pieces/community/framework/src";
+import { ActionType, FlowOperationType, PackageType, PieceType, StepLocationRelativeToParent, TriggerType } from "../../../../shared/src";
+
+type BaseStepMetadata = {
+    displayName: string;
+    logoUrl: string;
+    description: string;
+};
+
+export type PieceStepMetadata = BaseStepMetadata & {
+    type: ActionType.PIECE | TriggerType.PIECE;
+    pieceName: string;
+    pieceVersion: string;
+    categories: string[];
+    packageType: PackageType;
+    pieceType: PieceType;
+    auth: PieceAuthProperty | undefined;
+};
 
 export type PieceSelectorOperation = 
 |   {
@@ -24,6 +41,16 @@ export type PieceSelectorOperation =
     type: FlowOperationType.UPDATE_ACTION;
     stepName: string
 };
+
+type PrimitiveStepMetadata = BaseStepMetadata & {
+    type:
+      | ActionType.CODE
+      | ActionType.LOOP_ON_ITEMS
+      | ActionType.ROUTER
+      | TriggerType.EMPTY;
+};
+
+export type StepMetadata = PieceStepMetadata | PrimitiveStepMetadata;
 
 export type AskAiButtonOperations = Exclude<
     PieceSelectorOperation,
