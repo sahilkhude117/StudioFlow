@@ -1,9 +1,67 @@
-import { ActionType, FlowRun, flowStructureUtil, FlowVersion, isNil, LoopStepOutput, StepOutput, StepOutputStatus } from "../../../../shared/src";
+import { Check, FileQuestion, PauseIcon, Timer, X } from "lucide-react";
+import { ActionType, FlowRun, FlowRunStatus, flowStructureUtil, FlowVersion, isNil, LoopStepOutput, StepOutput, StepOutputStatus } from "../../../../shared/src";
 
 export const flowRunUtils = {
     findFailedStepInOutput,
     findLoopsState,
-}
+    getStatusIcon(status: FlowRunStatus): {
+        variant: 'default' | 'success' | 'error';
+        Icon: typeof Timer | typeof Check | typeof PauseIcon | typeof X;
+    } {
+        switch (status) {
+            case FlowRunStatus.RUNNING:
+              return {
+                variant: 'default',
+                Icon: Timer,
+              };
+            case FlowRunStatus.SUCCEEDED:
+              return {
+                variant: 'success',
+                Icon: Check,
+              };
+            case FlowRunStatus.STOPPED:
+              return {
+                variant: 'success',
+                Icon: Check,
+              };
+            case FlowRunStatus.FAILED:
+              return {
+                variant: 'error',
+                Icon: X,
+              };
+            case FlowRunStatus.PAUSED:
+              return {
+                variant: 'default',
+                Icon: PauseIcon,
+              };
+            case FlowRunStatus.MEMORY_LIMIT_EXCEEDED:
+              return {
+                variant: 'error',
+                Icon: X,
+              };
+            case FlowRunStatus.QUOTA_EXCEEDED:
+              return {
+                variant: 'error',
+                Icon: X,
+              };
+            case FlowRunStatus.INTERNAL_ERROR:
+              return {
+                variant: 'error',
+                Icon: X,
+              };
+            case FlowRunStatus.TIMEOUT:
+              return {
+                variant: 'error',
+                Icon: X,
+              };
+            default:
+              return {
+                variant: 'default',
+                Icon: FileQuestion,
+              }
+        }
+    },
+};
 
 function findFailedStepInOutput(
     steps: Record<string, StepOutput>,
